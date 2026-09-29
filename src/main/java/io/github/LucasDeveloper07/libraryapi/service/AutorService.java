@@ -2,10 +2,14 @@ package io.github.LucasDeveloper07.libraryapi.service;
 
 import io.github.LucasDeveloper07.libraryapi.exceptions.OperacaoNaoPermitidaException;
 import io.github.LucasDeveloper07.libraryapi.model.Autor;
+import io.github.LucasDeveloper07.libraryapi.model.Usuario;
 import io.github.LucasDeveloper07.libraryapi.repository.AutorRepository;
 import io.github.LucasDeveloper07.libraryapi.repository.LivroRepository;
+import io.github.LucasDeveloper07.libraryapi.security.SecurityService;
 import io.github.LucasDeveloper07.libraryapi.validator.AutorValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,9 +23,13 @@ public class AutorService {
     private final AutorRepository repository;
     private final AutorValidator validator;
     private final LivroRepository livroRepository;
+    private final SecurityService securityService;
 
     public Autor salvar(Autor autor) {
         validator.validar(autor);
+        Usuario usuario = securityService.usuarioLogado();
+        autor.setUsuario(usuario);
+
         return repository.save(autor);
     }
 
@@ -61,6 +69,22 @@ public class AutorService {
         }
 
         return repository.findAll();
+    }
+
+    public List<Autor> pesquisaByExample(String nome, String nacionalidade) {
+        Autor autor = new Autor();
+        autor.setNome(nome);
+        autor.setNacionalidade(nacionalidade);
+
+        ExampleMatcher matcher = ExampleMatcher
+                .matching()
+                .withIgnoreNullValues()
+                .withIgnoreCase()
+                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING);
+
+        Example<Autor> autorExample = Example.of(autor, matcher);
+
+        return repository.findAll(autorExample);
     }
 
     public boolean possuiLivro(Autor autor) {

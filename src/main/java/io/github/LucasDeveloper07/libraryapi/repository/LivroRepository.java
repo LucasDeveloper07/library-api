@@ -4,6 +4,7 @@ import io.github.LucasDeveloper07.libraryapi.model.Autor;
 import io.github.LucasDeveloper07.libraryapi.model.GeneroLivro;
 import io.github.LucasDeveloper07.libraryapi.model.Livro;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,14 +12,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * @see LivroRepositoryTest
  */
-public interface LivroRepository extends JpaRepository<Livro, UUID> {
+public interface LivroRepository extends JpaRepository<Livro, UUID>, JpaSpecificationExecutor<Livro> {
 
     List<Livro> findByAutor(Autor autor);
+
+    Optional<Livro> findByIsbn(String isbn);
 
     @Query("SELECT l FROM Livro AS l ORDER BY l.titulo, l.preco")
     List<Livro> listarTodosOrdenadoPorTituloAndPreco();
