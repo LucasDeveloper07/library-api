@@ -1,9 +1,9 @@
 package io.github.LucasDeveloper07.libraryapi.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
-import java.util.UUID;
-
+@Schema(name = "Client")
 public record ClientDTO(
 
         @NotBlank(message = "campo obrigatório")

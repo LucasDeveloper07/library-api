@@ -1,6 +1,7 @@
 package io.github.LucasDeveloper07.libraryapi.controller.dto;
 
 import io.github.LucasDeveloper07.libraryapi.model.GeneroLivro;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
@@ -10,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Schema(name = "Livro")
 public record LivroDTO(
         @NotBlank(message = "Campo obrigatório!")
         @ISBN

@@ -1,6 +1,6 @@
 package io.github.LucasDeveloper07.libraryapi.controller.dto;
 
-import io.github.LucasDeveloper07.libraryapi.model.Autor;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
+@Schema(name = "Autor")
 public record AutorDTO(
         @NotBlank(message = "Campo obrigatório!")
         @Size(min = 2, max = 100, message = "Campo fora do tamanho padrão.")

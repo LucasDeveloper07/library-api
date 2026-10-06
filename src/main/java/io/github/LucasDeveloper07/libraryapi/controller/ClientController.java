@@ -3,6 +3,10 @@ package io.github.LucasDeveloper07.libraryapi.controller;
 import io.github.LucasDeveloper07.libraryapi.controller.dto.ClientDTO;
 import io.github.LucasDeveloper07.libraryapi.controller.mappers.ClientMapper;
 import io.github.LucasDeveloper07.libraryapi.service.ClientService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +21,7 @@ import java.net.URI;
 @RestController
 @RequestMapping("clients")
 @RequiredArgsConstructor
+@Tag(name = "Clients")
 public class ClientController implements GenericController {
 
     private final ClientService service;
@@ -24,6 +29,10 @@ public class ClientController implements GenericController {
 
     @PostMapping
     @PreAuthorize("hasRole('GERENTE')")
+    @Operation(summary = "Salvar", description = "Cadastrar client")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Cadastrado com sucesso!")
+    })
     public ResponseEntity<Void> salvar(@RequestBody @Valid ClientDTO clientDto) {
         var clientEntity = mapper.toEntity(clientDto);
         service.salvar(clientEntity);
