@@ -1,6 +1,6 @@
 # Library API
 
-API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java 21**, **Spring Boot** e **PostgreSQL**. O projeto conta com autenticação e autorização via **Spring Security**, **OAuth2** (login social com Google) e tokens **JWT**, além de um **Authorization Server** próprio, que está em desenvolvimento.
+API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java 21**, **Spring Boot** e **PostgreSQL**. O projeto conta com autenticação e autorização via **Spring Security**, **OAuth2** (login social com Google) e tokens **JWT**, além de um **Authorization Server** próprio (com suporte a OpenID Connect), documentação interativa com **Swagger/OpenAPI** e monitoramento com **Spring Boot Actuator**.
 
 > **Status: em desenvolvimento.** Novas funcionalidades e melhorias estão sendo adicionadas continuamente.
 
@@ -14,15 +14,18 @@ API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java
 - **Autenticação e autorização** com Spring Security:
     - Login com usuário e senha (senhas criptografadas com BCrypt)
     - Login social com **Google (OAuth2)**
-    - Tokens **JWT** (validade de 60 minutos)
-    - Controle de acesso por perfil (`OPERADOR` e `GERENTE`)
-- **Authorization Server** (Spring Authorization Server) com clients cadastrados no banco de dados
+    - Tokens **JWT** (access token de 60 minutos e refresh token de 90 minutos)
+    - Claims personalizados no token (permissões e e-mail do usuário)
+    - Controle de acesso por perfil (`OPERADOR` e `GERENTE`) com `@PreAuthorize`
+- **Authorization Server** (Spring Authorization Server) com suporte a **OpenID Connect** e clients cadastrados no banco de dados
+- **Documentação da API** com **Swagger/OpenAPI** (springdoc), com autenticação Bearer JWT configurada na interface
+- **Monitoramento** com Spring Boot Actuator, em porta separada e restrito ao perfil `GERENTE`
 - **Validações** de entrada com Bean Validation (incluindo validação de ISBN)
 - **Regras de negócio**:
     - Não permite cadastrar ISBN duplicado
     - Não permite cadastrar autor duplicado (mesmo nome, data de nascimento e nacionalidade)
     - Preço é obrigatório para livros publicados a partir de 2020
-- **Tratamento global de erros** com respostas padronizadas
+- **Tratamento global de erros** com respostas padronizadas (400, 403, 409, 422 e 500)
 - **Auditoria** automática de data de cadastro e de atualização
 - Padrão **DTO** com mapeamento via **MapStruct**
 
@@ -36,9 +39,12 @@ API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java
 | Framework | Spring Boot |
 | Persistência | Spring Data JPA, Hibernate |
 | Banco de dados | PostgreSQL (em container Docker) |
-| Segurança | Spring Security, OAuth2 Client, Spring Authorization Server, JWT |
+| Segurança | Spring Security, OAuth2 Client, Spring Authorization Server (OIDC), JWT |
 | Validação | Bean Validation (Hibernate Validator) |
+| Documentação | Swagger/OpenAPI (springdoc) |
+| Monitoramento | Spring Boot Actuator |
 | Mapeamento | MapStruct |
+| Testes | JUnit, Spring Boot Test |
 | Produtividade | Lombok |
 | Build | Maven |
 | Contêineres | Docker |
@@ -79,8 +85,8 @@ src/main/java/io/github/LucasDeveloper07/libraryapi
 ### 1. Clone o repositório
 
 ````bash
-git clone https://github.com/LucasDeveloper07/[NOME-DO-REPOSITORIO].git
-cd [NOME-DO-REPOSITORIO]
+git clone https://github.com/LucasDeveloper07/library-api.git
+cd library-api
 ````
 
 ### 2. Baixe as imagens e suba o PostgreSQL e o pgAdmin com Docker
@@ -232,7 +238,13 @@ $env:GOOGLE_CLIENT_SECRET="seu_client_secret"
 ./mvnw spring-boot:run
 ````
 
-A API ficará disponível em `http://localhost:8080`.
+| Recurso | Endereço |
+|---|---|
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Actuator | http://localhost:9090/actuator (apenas `GERENTE`) |
+
+> O projeto inicia com o perfil `production` por padrão (logs de SQL desativados).
 
 ---
 
@@ -247,6 +259,19 @@ A API ficará disponível em `http://localhost:8080`.
 - Todos os demais endpoints exigem autenticação (Basic, login por formulário, login com Google ou token JWT).
 - No login social com Google, um usuário novo é criado automaticamente com o perfil `OPERADOR`.
 - O **Authorization Server** utiliza os fluxos `authorization_code` e `client_credentials`, com clients cadastrados na tabela `client` (via `POST /clients`, restrito a `GERENTE`).
+- Endpoints do Authorization Server:
+
+| Endpoint | Finalidade |
+|---|---|
+| `/oauth2/authorize` | Autorização |
+| `/oauth2/token` | Obtenção do token |
+| `/oauth2/introspect` | Consulta do status do token |
+| `/oauth2/revoke` | Revogação do token |
+| `/oauth2/userinfo` | Informações do usuário (OpenID Connect) |
+| `/oauth2/jwks` | Chave pública para verificar a assinatura do token |
+| `/oauth2/logout` | Logout |
+
+- Os endpoints da API aceitam token JWT no header `Authorization: Bearer <token>`.
 
 ---
 
@@ -282,6 +307,14 @@ Gêneros disponíveis: `FICCAO`, `FANTASIA`, `MISTERIO`, `ROMANCE`, `BIOGRAFIA`,
 |---|---|---|---|
 | `POST` | `/usuarios` | Cadastra um usuário | Público |
 | `POST` | `/clients` | Cadastra um client OAuth2 | GERENTE |
+
+---
+
+## Documentação da API (Swagger)
+
+Com a aplicação em execução, acesse http://localhost:8080/swagger-ui.html para visualizar e testar os endpoints. A especificação OpenAPI está disponível em `/v3/api-docs`.
+
+Para testar endpoints protegidos, clique em **Authorize** e informe um token JWT (esquema `bearerAuth`).
 
 ---
 
@@ -348,12 +381,13 @@ GET /livros?titulo=casmurro&genero=ROMANCE&pagina=0&tamanho-pagina=10
 | `404 Not Found` | Recurso não encontrado |
 | `409 Conflict` | Registro duplicado (ISBN ou autor) |
 | `422 Unprocessable Content` | Erro de validação |
+| `500 Internal Server Error` | Erro inesperado |
 
 ---
 
-## 🧪 Testes
+##  Testes
 
-O projeto possui testes de repositório com JUnit para as operações de autores e livros (salvar, atualizar, listar, excluir e consultas personalizadas).
+O projeto possui 19 testes de repositório com JUnit para as operações de autores e livros (salvar, atualizar, listar, excluir e consultas personalizadas).
 
 ````bash
 ./mvnw test
@@ -363,12 +397,9 @@ O projeto possui testes de repositório com JUnit para as operações de autores
 
 ##  Próximos passos
 
-- [ ] Finalizar a implementação do Authorization Server
-- [ ] Documentar a API com Swagger/OpenAPI
-- [ ] Ampliar a cobertura de testes (serviços e controllers)
+
 - [ ] Criar um `docker-compose.yml` para subir a aplicação, o banco e o pgAdmin com um único comando
-- [ ] Usar migrations de banco de dados (Flyway)
-- [ ] Configurar uma chave RSA fixa para assinatura dos tokens JWT
+- [ ] Realizar o deploy da aplicação na AWS
 
 ---
 

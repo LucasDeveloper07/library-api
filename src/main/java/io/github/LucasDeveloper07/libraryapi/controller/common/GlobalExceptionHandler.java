@@ -5,6 +5,7 @@ import io.github.LucasDeveloper07.libraryapi.controller.dto.ErroResposta;
 import io.github.LucasDeveloper07.libraryapi.exceptions.CampoInvalidoException;
 import io.github.LucasDeveloper07.libraryapi.exceptions.OperacaoNaoPermitidaException;
 import io.github.LucasDeveloper07.libraryapi.exceptions.RegistroDuplicadoException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -18,10 +19,13 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ErroResposta handlerMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        log.error("Erro de validação: {}", e.getMessage());
+
         List<FieldError> fieldErrors = e.getFieldErrors();
         List<ErroCampo> listaErrosCampo = fieldErrors
                 .stream()
@@ -62,6 +66,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErroResposta errosNaoTratados(RuntimeException e) {
+        log.error("Erro inesperado: {}", e.getMessage());
+
         return new ErroResposta(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erro inesperado!",
