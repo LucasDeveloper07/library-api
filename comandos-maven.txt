@@ -1,0 +1,8 @@
+// Comandos maven para limpar a pasta target e compilar (sem os testes)
+-- O terminal deve estar na raiz do projeto (na mesma pasta que o arquivo pom.xml)
+
+./mvnw clean install -DskipTests
+
+// Comandos para limpar a pasta target e realizar o build da aplicação (sem os testes)
+
+./mvnw clean package -DskipTests

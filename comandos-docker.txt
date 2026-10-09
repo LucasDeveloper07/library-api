@@ -1,0 +1,18 @@
+// Criar network para comunicação dos contêineres
+
+docker network create -nome da network- (library-network)
+
+// Criar e rodar a instância de um contêiner
+
+docker run --name librarydb -e POSTGRES_PASSWORD={senha} -e POSTGRES_USER={username} -e POSTGRES_DB=library -p 5432:5432 -d --network library-network postgres:18.4
+docker run --name pgadmin4 -e PGADMIN_DEFAULT_EMAIL={email} -e PGADMIN_DEFAULT_PASSWORD={senha} -p 15432:80 -d --network library-network dpage/pgadmin4:9.16
+
+// Comando para consultar todos os contêineres rodando
+
+docker ps
+
+// Comando para buildar uma imagem. Este comando deve ser executado na mesma pasta que se encontra o arquivo Dockerfile
+
+docker build --tag {nome da imagem ('nome do repositório'/'nome da aplicação')} .
+
+(O "." (ponto final) serve para referenciar o Dockerfile)

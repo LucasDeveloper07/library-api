@@ -1,0 +1,39 @@
+CREATE TABLE autor(
+	id UUID NOT NULL PRIMARY KEY,
+	nome VARCHAR(100) NOT NULL,
+	data_nascimento DATE NOT NULL,
+	nacionalidade VARCHAR(50) NOT NULL,
+	data_cadastro TIMESTAMP,
+	data_atualizacao TIMESTAMP,
+	id_usuario UUID
+);
+
+CREATE TABLE livro(
+	id UUID NOT NULL PRIMARY KEY,
+	isbn VARCHAR(20) NOT NULL UNIQUE,
+	titulo VARCHAR(150) NOT NULL,
+	data_publicacao DATE NOT NULL,
+	genero VARCHAR(30) NOT NULL,
+	preco NUMERIC(18, 2),
+	data_cadastro TIMESTAMP,
+	data_atualizacao TIMESTAMP,
+	id_usuario UUID,
+	id_autor UUID NOT NULL REFERENCES autor(id),
+	CONSTRAINT chk_genero CHECK (genero IN ('FICCAO', 'FANTASIA', 'MISTERIO', 'ROMANCE', 'BIOGRAFIA', 'CIENCIA'))
+);
+
+CREATE TABLE usuario(
+	id UUID NOT NULL PRIMARY KEY,
+	login VARCHAR(20) NOT NULL UNIQUE,
+	senha VARCHAR(300) NOT NULL,
+	email varchar(150) NOT NULL,
+	roles VARCHAR[]
+);
+
+CREATE TABLE client(
+	id UUID NOT NULL PRIMARY KEY,
+	client_id VARCHAR(150) NOT NULL,
+	client_secret VARCHAR(400) NOT NULL,
+	redirect_uri VARCHAR(200) NOT NULL,
+	scope VARCHAR(50)
+);

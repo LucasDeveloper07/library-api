@@ -94,8 +94,8 @@ cd library-api
 Baixe as imagens do **PostgreSQL** e do **pgAdmin 4** (interface web para visualizar os dados do banco):
 
 ````bash
-docker pull postgres:16
-docker pull dpage/pgadmin4
+docker pull postgres:18.4
+docker pull dpage/pgadmin4:9.16
 ````
 
 Crie uma rede para que os dois containers se comuniquem:
@@ -107,25 +107,24 @@ docker network create library-network
 Suba o **PostgreSQL**:
 
 ````bash
-docker run --name library-db \
-  --network library-network \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=sua_senha \
-  -e POSTGRES_DB=library \
-  -p 5432:5432 \
-  -v library-data:/var/lib/postgresql/data \
-  -d postgres:16
+docker run --name librarydb
+  -e POSTGRES_USER=postgres 
+  -e POSTGRES_PASSWORD=sua_senha 
+  -e POSTGRES_DB=library 
+  -p 5432:5432 -d 
+  --network library-network 
+  postgres:18.4
 ````
 
 Suba o **pgAdmin 4**:
 
 ````bash
-docker run --name library-pgadmin \
-  --network library-network \
-  -e PGADMIN_DEFAULT_EMAIL=admin@admin.com \
-  -e PGADMIN_DEFAULT_PASSWORD=admin \
-  -p 5050:80 \
-  -d dpage/pgadmin4
+docker run --name pgadmin4 
+  -e PGADMIN_DEFAULT_EMAIL=admin@admin.com
+  -e PGADMIN_DEFAULT_PASSWORD=admin
+  -p 15432:80 -d 
+  --network library-network
+  dpage/pgadmin4:9.16
 ````
 
 | Serviço | Endereço | Credenciais |
@@ -160,43 +159,44 @@ docker start library-db library-pgadmin
 O projeto usa `ddl-auto: none`, ou seja, o Hibernate **não** cria as tabelas automaticamente. Execute o script abaixo no banco antes de iniciar a aplicação (pode ser pelo Query Tool do pgAdmin):
 
 ````sql
-CREATE TABLE usuario (
-    id       uuid PRIMARY KEY,
-    login    varchar(255),
-    senha    varchar(255),
-    email    varchar(255),
-    roles    varchar[]
+CREATE TABLE autor(
+    id UUID NOT NULL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    data_nascimento DATE NOT NULL,
+    nacionalidade VARCHAR(50) NOT NULL,
+    data_cadastro TIMESTAMP,
+    data_atualizacao TIMESTAMP,
+    id_usuario UUID
 );
 
-CREATE TABLE client (
-    id            uuid PRIMARY KEY,
-    client_id     varchar(255),
-    client_secret varchar(255),
-    redirect_uri  varchar(255),
-    scope         varchar(255)
+CREATE TABLE livro(
+    id UUID NOT NULL PRIMARY KEY,
+    isbn VARCHAR(20) NOT NULL UNIQUE,
+    titulo VARCHAR(150) NOT NULL,
+    data_publicacao DATE NOT NULL,
+    genero VARCHAR(30) NOT NULL,
+    preco NUMERIC(18, 2),
+    data_cadastro TIMESTAMP,
+    data_atualizacao TIMESTAMP,
+    id_usuario UUID,
+    id_autor UUID NOT NULL REFERENCES autor(id),
+    CONSTRAINT chk_genero CHECK (genero IN ('FICCAO', 'FANTASIA', 'MISTERIO', 'ROMANCE', 'BIOGRAFIA', 'CIENCIA'))
 );
 
-CREATE TABLE autor (
-    id               uuid PRIMARY KEY,
-    nome             varchar(100) NOT NULL,
-    data_nascimento  date NOT NULL,
-    nacionalidade    varchar(50) NOT NULL,
-    data_cadastro    timestamp,
-    data_atualizacao timestamp,
-    id_usuario       uuid REFERENCES usuario(id)
+CREATE TABLE usuario(
+    id UUID NOT NULL PRIMARY KEY,
+    login VARCHAR(20) NOT NULL UNIQUE,
+    senha VARCHAR(300) NOT NULL,
+    email varchar(150) NOT NULL,
+    roles VARCHAR[]
 );
 
-CREATE TABLE livro (
-    id               uuid PRIMARY KEY,
-    isbn             varchar(20) NOT NULL,
-    titulo           varchar(150) NOT NULL,
-    data_publicacao  date,
-    genero           varchar(30) NOT NULL,
-    preco            numeric(18,2),
-    id_autor         uuid REFERENCES autor(id),
-    data_cadastro    timestamp,
-    data_atualizacao timestamp,
-    id_usuario       uuid REFERENCES usuario(id)
+CREATE TABLE client(
+    id UUID NOT NULL PRIMARY KEY,
+    client_id VARCHAR(150) NOT NULL,
+    client_secret VARCHAR(400) NOT NULL,
+    redirect_uri VARCHAR(200) NOT NULL,
+    scope VARCHAR(50)
 );
 ````
 
