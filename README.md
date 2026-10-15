@@ -4,8 +4,6 @@ API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java
 
 A aplicação é empacotada em uma imagem **Docker** (publicada no Docker Hub) e foi implantada na **AWS**, com a aplicação em uma instância **EC2** e o banco no **Amazon RDS (PostgreSQL)**.
 
-> **Status: em desenvolvimento.** Novas funcionalidades e melhorias estão sendo adicionadas continuamente.
-
 ---
 
 ## Funcionalidades
