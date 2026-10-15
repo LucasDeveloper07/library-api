@@ -16,3 +16,7 @@ docker ps
 docker build --tag {nome da imagem ('nome do repositório'/'nome da aplicação')} .
 
 (O "." (ponto final) serve para referenciar o Dockerfile)
+
+// Comando para criar e rodar a instância da aplicação (libraryapi)
+
+docker run --name libraryapi -e DATABASE_URL=jdbc:postgresql://{endereço do banco}:{porta}/{banco de dados} -e DATABASE_USERNAME=postgres -e DATABASE_PASSWORD=postgres -p 8080:8080 -p 9090:9090 devlucasf/libraryapi

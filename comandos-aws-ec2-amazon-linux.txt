@@ -1,0 +1,13 @@
+sudo yum update
+
+// Comando para instalar o docker na máquina (Amazon Linux)
+
+sudo yum install docker
+
+// Comando para iniciar o serviço do Docker na máquina
+
+sudo service docker start
+
+// Comando para criar o contêiner da imagem docker na máquina
+
+sudo docker run --name libraryapi -e DATABASE_URL=jdbc:postgresql://{endereço do banco}:{porta}/{banco de dados} -e DATABASE_USERNAME=postgres -e DATABASE_PASSWORD=postgres -p 8080:8080 -p 9090:9090 devlucasf/libraryapi
