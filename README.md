@@ -2,6 +2,8 @@
 
 API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java 21**, **Spring Boot** e **PostgreSQL**. O projeto conta com autenticação e autorização via **Spring Security**, **OAuth2** (login social com Google) e tokens **JWT**, além de um **Authorization Server** próprio (com suporte a OpenID Connect), documentação interativa com **Swagger/OpenAPI** e monitoramento com **Spring Boot Actuator**.
 
+A aplicação é empacotada em uma imagem **Docker** (publicada no Docker Hub) e foi implantada na **AWS**, com a aplicação em uma instância **EC2** e o banco no **Amazon RDS (PostgreSQL)**.
+
 > **Status: em desenvolvimento.** Novas funcionalidades e melhorias estão sendo adicionadas continuamente.
 
 ---
@@ -28,17 +30,19 @@ API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java
 - **Tratamento global de erros** com respostas padronizadas (400, 403, 409, 422 e 500)
 - **Auditoria** automática de data de cadastro e de atualização
 - Padrão **DTO** com mapeamento via **MapStruct**
+- **Containerização** com Dockerfile multi-stage e configuração por variáveis de ambiente
+- **Deploy na AWS** (EC2 + RDS) com grupos de segurança configurados
 
 ---
 
-##  Tecnologias
+## Tecnologias
 
 | Categoria | Tecnologia |
 |---|---|
 | Linguagem | Java 21 |
 | Framework | Spring Boot |
-| Persistência | Spring Data JPA, Hibernate |
-| Banco de dados | PostgreSQL (em container Docker) |
+| Persistência | Spring Data JPA, Hibernate, HikariCP |
+| Banco de dados | PostgreSQL (Docker em desenvolvimento, Amazon RDS em produção) |
 | Segurança | Spring Security, OAuth2 Client, Spring Authorization Server (OIDC), JWT |
 | Validação | Bean Validation (Hibernate Validator) |
 | Documentação | Swagger/OpenAPI (springdoc) |
@@ -47,16 +51,17 @@ API REST para gerenciamento de **livros** e **autores**, desenvolvida com **Java
 | Testes | JUnit, Spring Boot Test |
 | Produtividade | Lombok |
 | Build | Maven |
-| Contêineres | Docker |
+| Contêineres | Docker, Docker Hub |
+| Nuvem | AWS (EC2, RDS, EBS, VPC, grupos de segurança) |
 | Administração do banco | pgAdmin 4 |
 
 ---
 
 ## Estrutura do projeto
 
-````
+```
 src/main/java/io/github/LucasDeveloper07/libraryapi
-├── config/          # Configurações de segurança e Authorization Server
+├── config/          # Configurações de segurança, Authorization Server e datasource
 ├── controller/      # Endpoints REST
 │   ├── dto/         # Objetos de entrada e saída
 │   ├── mappers/     # Mapeamento DTO <-> Entidade (MapStruct)
@@ -67,98 +72,102 @@ src/main/java/io/github/LucasDeveloper07/libraryapi
 ├── security/        # Autenticação, login social e clients OAuth2
 ├── service/         # Regras de negócio
 └── validator/       # Validadores de regras de negócio
-````
+
+aws/                 # Diagrama da arquitetura na AWS
+Dockerfile           # Build multi-stage da imagem da aplicação
+```
 
 ---
 
 ## Pré-requisitos
 
 - [Java 21](https://adoptium.net/)
-- [Docker](https://www.docker.com/) (para o PostgreSQL e o pgAdmin)
+- [Docker](https://www.docker.com/) (para o PostgreSQL, o pgAdmin e a imagem da aplicação)
 - Maven (ou use o Maven Wrapper `./mvnw` incluído no projeto)
 - Credenciais OAuth2 do Google (para o login social): [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 
 ---
 
-## Como executar
+## Como executar localmente
 
 ### 1. Clone o repositório
 
-````bash
+```bash
 git clone https://github.com/LucasDeveloper07/library-api.git
 cd library-api
-````
+```
 
-### 2. Baixe as imagens e suba o PostgreSQL e o pgAdmin com Docker
+### 2. Suba o PostgreSQL e o pgAdmin com Docker
 
-Baixe as imagens do **PostgreSQL** e do **pgAdmin 4** (interface web para visualizar os dados do banco):
+Baixe as imagens:
 
-````bash
+```bash
 docker pull postgres:18.4
 docker pull dpage/pgadmin4:9.16
-````
+```
 
-Crie uma rede para que os dois containers se comuniquem:
+Crie uma rede para que os contêineres se comuniquem:
 
-````bash
+```bash
 docker network create library-network
-````
+```
 
 Suba o **PostgreSQL**:
 
-````bash
-docker run --name librarydb
-  -e POSTGRES_USER=postgres 
-  -e POSTGRES_PASSWORD=sua_senha 
-  -e POSTGRES_DB=library 
-  -p 5432:5432 -d 
-  --network library-network 
+```bash
+docker run --name librarydb \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=sua_senha \
+  -e POSTGRES_DB=library \
+  -p 5432:5432 -d \
+  -v library-data:/var/lib/postgresql \
+  --network library-network \
   postgres:18.4
-````
+```
 
 Suba o **pgAdmin 4**:
 
-````bash
-docker run --name pgadmin4 
-  -e PGADMIN_DEFAULT_EMAIL=admin@admin.com
-  -e PGADMIN_DEFAULT_PASSWORD=admin
-  -p 15432:80 -d 
-  --network library-network
+```bash
+docker run --name pgadmin4 \
+  -e PGADMIN_DEFAULT_EMAIL=seu_email@exemplo.com \
+  -e PGADMIN_DEFAULT_PASSWORD=sua_senha_pgadmin \
+  -p 15432:80 -d \
+  --network library-network \
   dpage/pgadmin4:9.16
-````
+```
 
 | Serviço | Endereço | Credenciais |
 |---|---|---|
 | PostgreSQL | `localhost:5432` | usuário `postgres`, senha `sua_senha`, banco `library` |
-| pgAdmin 4 | http://localhost:5050 | e-mail `admin@admin.com`, senha `admin` |
+| pgAdmin 4 | http://localhost:15432 | e-mail e senha definidos no comando acima |
 
-> Ajuste usuário, senha, nome do banco e versão conforme o seu ambiente. O volume `library-data` mantém os dados salvos mesmo que o container seja removido.
+> Ajuste usuário, senha, nome do banco e versão conforme o seu ambiente. O volume `library-data` mantém os dados salvos mesmo que o contêiner seja removido.
 
 **Visualizando os dados no pgAdmin**
 
-1. Acesse http://localhost:5050 e faça login.
+1. Acesse http://localhost:15432 e faça login.
 2. Clique em **Add New Server**.
 3. Na aba **General**, dê um nome ao servidor (ex.: `library-db`).
 4. Na aba **Connection**, preencha:
-    - **Host name/address:** `library-db` (nome do container do PostgreSQL, pois os dois estão na mesma rede Docker)
+    - **Host name/address:** `librarydb` (nome do contêiner do PostgreSQL, pois os dois estão na mesma rede Docker)
     - **Port:** `5432`
     - **Maintenance database:** `library`
     - **Username:** `postgres`
     - **Password:** `sua_senha`
 5. Salve e navegue em **Servers > library-db > Databases > library > Schemas > public > Tables**. Clique com o botão direito em uma tabela e escolha **View/Edit Data > All Rows**.
 
-Para parar e iniciar os containers novamente:
+Para parar e iniciar os contêineres novamente:
 
-````bash
-docker stop library-db library-pgadmin
-docker start library-db library-pgadmin
-````
+```bash
+docker stop librarydb pgadmin4
+docker start librarydb pgadmin4
+```
 
 ### 3. Crie as tabelas
 
 O projeto usa `ddl-auto: none`, ou seja, o Hibernate **não** cria as tabelas automaticamente. Execute o script abaixo no banco antes de iniciar a aplicação (pode ser pelo Query Tool do pgAdmin):
 
-````sql
+```sql
 CREATE TABLE autor(
     id UUID NOT NULL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -198,7 +207,7 @@ CREATE TABLE client(
     redirect_uri VARCHAR(200) NOT NULL,
     scope VARCHAR(50)
 );
-````
+```
 
 ### 4. Configure as variáveis de ambiente
 
@@ -214,29 +223,29 @@ A aplicação lê suas configurações sensíveis de variáveis de ambiente (nen
 
 **Linux / macOS:**
 
-````bash
+```bash
 export DATABASE_URL=jdbc:postgresql://localhost:5432/library
 export DATABASE_USERNAME=postgres
 export DATABASE_PASSWORD=sua_senha
 export GOOGLE_CLIENT_ID=seu_client_id
 export GOOGLE_CLIENT_SECRET=seu_client_secret
-````
+```
 
 **Windows (PowerShell):**
 
-````powershell
+```powershell
 $env:DATABASE_URL="jdbc:postgresql://localhost:5432/library"
 $env:DATABASE_USERNAME="postgres"
 $env:DATABASE_PASSWORD="sua_senha"
 $env:GOOGLE_CLIENT_ID="seu_client_id"
 $env:GOOGLE_CLIENT_SECRET="seu_client_secret"
-````
+```
 
 ### 5. Execute a aplicação
 
-````bash
+```bash
 ./mvnw spring-boot:run
-````
+```
 
 | Recurso | Endereço |
 |---|---|
@@ -244,7 +253,126 @@ $env:GOOGLE_CLIENT_SECRET="seu_client_secret"
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | Actuator | http://localhost:9090/actuator (apenas `GERENTE`) |
 
-> O projeto inicia com o perfil `production` por padrão (logs de SQL desativados).
+> Localmente a aplicação inicia com o perfil padrão (logs de SQL ativados). Na imagem Docker, o perfil `production` é ativado pela variável `SPRING_PROFILES_ACTIVE` (logs de SQL desativados).
+
+---
+
+## Docker
+
+### Dockerfile
+
+O `Dockerfile` usa **build multi-stage**:
+
+1. **build:** imagem `maven` com Amazon Corretto 21 compila o projeto (`mvn clean package -DskipTests`).
+2. **run:** imagem `amazoncorretto` com Java 21 recebe apenas o JAR gerado, o que deixa a imagem final menor.
+
+Variáveis de ambiente definidas na imagem: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SPRING_PROFILES_ACTIVE=production` e `TZ=America/Sao_Paulo`. Os valores reais devem ser informados na criação do contêiner (`-e`), nunca na imagem.
+
+### Build e execução
+
+```bash
+# Build da imagem (na pasta do Dockerfile)
+docker build --tag devlucasf/libraryapi .
+
+# Execução do contêiner
+docker run -d --name libraryapi \
+  -e DATABASE_URL=jdbc:postgresql://<endereco-do-banco>:5432/library \
+  -e DATABASE_USERNAME=<usuario> \
+  -e DATABASE_PASSWORD=<senha> \
+  -e GOOGLE_CLIENT_ID=<client_id> \
+  -e GOOGLE_CLIENT_SECRET=<client_secret> \
+  -p 8080:8080 \
+  devlucasf/libraryapi
+```
+
+> A porta `9090` (Actuator) não deve ser publicada em ambientes expostos à internet.
+
+Para enviar a imagem ao Docker Hub:
+
+```bash
+docker login
+docker push devlucasf/libraryapi
+```
+
+---
+
+## Deploy na AWS
+
+A aplicação foi implantada na AWS com a seguinte arquitetura:
+
+![Arquitetura na AWS](aws/arquitetura-aws-libraryapi.jpg)
+
+| Componente | Função |
+|---|---|
+| **Docker Hub** | Armazena a imagem da aplicação |
+| **EC2** (Amazon Linux) | Executa o Docker e o contêiner da aplicação |
+| **EBS** | Volume de armazenamento da instância EC2 |
+| **RDS** (PostgreSQL) | Banco de dados gerenciado, na mesma VPC do EC2 |
+| **Grupos de segurança** | Controlam o tráfego de entrada de cada recurso |
+
+### Passo a passo
+
+**1. Crie o banco no Amazon RDS**
+
+- Mecanismo: PostgreSQL, com o banco inicial `library`.
+- Acesso público: **desativado**.
+- VPC: a mesma da instância EC2.
+- Depois de criado, execute o script SQL da seção [Crie as tabelas](#3-crie-as-tabelas) no banco.
+
+**2. Crie a instância EC2**
+
+- Sistema operacional: Amazon Linux.
+- Associe um grupo de segurança conforme a tabela da próxima seção.
+
+**3. Instale o Docker na instância**
+
+```bash
+sudo yum update
+sudo yum install docker
+sudo service docker start
+```
+
+**4. Execute a aplicação**
+
+```bash
+sudo docker run -d --name libraryapi --restart unless-stopped \
+  -e DATABASE_URL=jdbc:postgresql://<endpoint-do-rds>:5432/library \
+  -e DATABASE_USERNAME=<usuario> \
+  -e DATABASE_PASSWORD=<senha> \
+  -e GOOGLE_CLIENT_ID=<client_id> \
+  -e GOOGLE_CLIENT_SECRET=<client_secret> \
+  -p 8080:8080 \
+  devlucasf/libraryapi
+```
+
+A imagem é baixada automaticamente do Docker Hub na primeira execução.
+
+**5. Acompanhe os logs e o estado do contêiner**
+
+```bash
+sudo docker ps            # contêineres em execução
+sudo docker ps -a         # inclui os parados
+sudo docker logs -f libraryapi
+sudo docker stop libraryapi
+```
+
+### Grupos de segurança
+
+| Recurso | Porta | Origem | Finalidade |
+|---|---|---|---|
+| EC2 | 8080 (TCP) | Internet ou IPs autorizados | Acesso à API |
+| EC2 | 22 (TCP) | Apenas o seu IP | Acesso SSH |
+| RDS | 5432 (TCP) | **Grupo de segurança do EC2** | Conexão da aplicação com o banco |
+
+Boas práticas adotadas:
+
+- O RDS **não é acessível pela internet**: aceita conexões somente do grupo de segurança do EC2.
+- A porta `9090` (Actuator) **não é aberta** no EC2.
+- Nenhuma credencial fica no código ou na imagem: tudo é injetado por variáveis de ambiente.
+
+### Cuidados com custos
+
+Depois dos testes, encerre os recursos que não estiverem em uso: instância EC2, volumes EBS, snapshots, Elastic IPs e o banco RDS. Configure alertas de orçamento (AWS Budgets) para acompanhar os gastos.
 
 ---
 
@@ -322,7 +450,7 @@ Para testar endpoints protegidos, clique em **Authorize** e informe um token JWT
 
 **Cadastrar autor**
 
-````http
+```http
 POST /autores
 Content-Type: application/json
 
@@ -331,11 +459,11 @@ Content-Type: application/json
   "dataNascimento": "1839-06-21",
   "nacionalidade": "Brasileira"
 }
-````
+```
 
 **Cadastrar livro**
 
-````http
+```http
 POST /livros
 Content-Type: application/json
 
@@ -347,17 +475,17 @@ Content-Type: application/json
   "preco": 39.90,
   "idAutor": "id-do-autor-cadastrado"
 }
-````
+```
 
 **Pesquisar livros**
 
-````http
+```http
 GET /livros?titulo=casmurro&genero=ROMANCE&pagina=0&tamanho-pagina=10
-````
+```
 
 **Exemplo de resposta de erro** (`422 Unprocessable Content`)
 
-````json
+```json
 {
   "status": 422,
   "mensagem": "Erro de validação.",
@@ -368,7 +496,7 @@ GET /livros?titulo=casmurro&genero=ROMANCE&pagina=0&tamanho-pagina=10
     }
   ]
 }
-````
+```
 
 ### Códigos de resposta
 
@@ -385,21 +513,25 @@ GET /livros?titulo=casmurro&genero=ROMANCE&pagina=0&tamanho-pagina=10
 
 ---
 
-##  Testes
+## Testes
 
 O projeto possui 19 testes de repositório com JUnit para as operações de autores e livros (salvar, atualizar, listar, excluir e consultas personalizadas).
 
-````bash
+```bash
 ./mvnw test
-````
+```
 
 ---
 
-##  Próximos passos
+## Próximos passos
 
-
+- [x] Containerizar a aplicação com Docker e publicar a imagem no Docker Hub
+- [x] Realizar o deploy da aplicação na AWS (EC2 + RDS)
 - [ ] Criar um `docker-compose.yml` para subir a aplicação, o banco e o pgAdmin com um único comando
-- [ ] Realizar o deploy da aplicação na AWS
+- [ ] Persistir a chave RSA de assinatura dos tokens (hoje ela é gerada a cada inicialização, o que invalida os tokens após reiniciar o contêiner)
+- [ ] Configurar HTTPS com domínio próprio
+- [ ] Criar um pipeline de CI/CD (build, testes e publicação da imagem)
+- [ ] Restringir a exposição dos endpoints do Actuator
 
 ---
 
